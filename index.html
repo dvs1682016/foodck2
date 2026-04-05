@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 營養師 - 真實AI分析版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;700&family=Playfair+Display:ital,wght@1,400;1,700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background: linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%);
+        }
+        .font-serif {
+            font-family: 'Playfair Display', serif;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.90);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+        }
+        .btn-sexy {
+            background: linear-gradient(90deg, #14b8a6 0%, #0d9488 100%);
+            box-shadow: 0 4px 15px rgba(20, 184, 166, 0.4);
+            transition: all 0.3s ease;
+        }
+        .btn-sexy:active {
+            transform: scale(0.98);
+            box-shadow: 0 2px 8px rgba(20, 184, 166, 0.3);
+        }
+        
+        /* Scanner Animation */
+        .scan-container {
+            position: relative;
+            overflow: hidden;
+            border-radius: 1rem; /* rounded-xl */
+        }
+        .scan-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(to right, transparent, #14b8a6, #14b8a6, transparent);
+            box-shadow: 0 0 15px #14b8a6, 0 0 30px #0d9488;
+            animation: scan 2s linear infinite;
+            z-index: 20;
+        }
+        .scan-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, rgba(20, 184, 166, 0) 0%, rgba(20, 184, 166, 0.1) 50%, rgba(20, 184, 166, 0) 100%);
+            animation: scan-overlay 2s linear infinite;
+            z-index: 10;
+        }
+
+        @keyframes scan {
+            0% { top: -10%; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 110%; opacity: 0; }
+        }
+        @keyframes scan-overlay {
+            0% { top: -100%; }
+            100% { top: 100%; }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 text-slate-800">
+
+    <!-- Main Container -->
+    <div class="glass-panel w-full max-w-md rounded-3xl overflow-hidden shadow-2xl relative">
+        
+        <!-- Header -->
+        <div class="pt-8 pb-4 text-center px-6">
+            <h1 class="font-serif text-3xl italic text-teal-600 font-bold mb-1">AI 營養師</h1>
+            <p class="text-xs text-teal-400 tracking-widest uppercase">Real AI Food Analysis</p>
+        </div>
+
+        <!-- Content Area -->
+        <div class="p-6">
+            
+            <!-- Upload Section -->
+            <div id="uploadSection" class="transition-all duration-500">
+                <div class="bg-white rounded-2xl border-2 border-dashed border-teal-300 p-8 text-center cursor-pointer hover:bg-teal-50 transition relative group overflow-hidden">
+                    <input type="file" id="imageInput" accept="image/*" capture="environment" class="absolute inset-0 w-full h-full opacity-0 z-10 cursor-pointer" onchange="window.handleImageUpload(this)">
+                    
+                    <div id="placeholderPreview">
+                        <div class="w-16 h-16 bg-teal-100 text-teal-500 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                        </div>
+                        <p class="text-slate-500 font-medium">拍攝真正的食物</p>
+                        <p class="text-xs text-teal-400 mt-2">別害羞，讓我看看你實際上吃了什麼...</p>
+                    </div>
+
+                    <img id="imagePreview" class="hidden w-full h-48 object-cover rounded-xl shadow-md" alt="Food Preview">
+                </div>
+
+                <button id="analyzeBtn" onclick="window.prepareAnalysis()" class="btn-sexy w-full text-white font-bold py-4 rounded-xl mt-6 disabled:opacity-50 disabled:cursor-not-allowed hidden" disabled>
+                    開始真實分析 ♥
+                </button>
+            </div>
+
+            <!-- Loading Section (Scanner) -->
+            <div id="loadingSection" class="hidden text-center py-6">
+                <div class="relative w-full h-64 rounded-xl overflow-hidden shadow-lg mb-6 bg-slate-100">
+                    <!-- Image to be scanned -->
+                    <img id="scanningImage" class="w-full h-full object-cover" alt="Scanning..." />
+                    
+                    <!-- Scanner Effects -->
+                    <div class="scan-overlay"></div>
+                    <div class="scan-line"></div>
+                </div>
+
+                <h3 class="text-xl font-bold text-slate-700 font-serif">正在進行深度掃描...</h3>
+                <p class="text-teal-500 text-sm mt-2 animate-pulse">分析熱量、蛋白質、糖分結構...</p>
+            </div>
+
+            <!-- Result Section -->
+            <div id="resultSection" class="hidden animate-fade-in">
+                <div class="text-center mb-6">
+                    <span class="inline-block px-3 py-1 bg-teal-100 text-teal-600 text-xs font-bold rounded-full mb-2">分析完成</span>
+                    <h2 id="foodName" class="text-2xl font-bold text-slate-800 font-serif">神秘美食</h2>
+                    <p class="text-sm text-slate-500 mt-1">份量基準：<span class="font-bold text-teal-600">250g</span></p>
+                </div>
+
+                <!-- Display Image -->
+                <div class="mb-6 rounded-xl overflow-hidden shadow-sm border border-teal-100">
+                    <img id="resultImage" class="w-full h-48 object-cover" alt="Analyzed Food">
+                </div>
+
+                <!-- Main Calories -->
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-teal-100 mb-6 flex justify-between items-center relative overflow-hidden">
+                    <div class="absolute -right-4 -top-4 w-24 h-24 bg-teal-50 rounded-full blur-xl"></div>
+                    <div>
+                        <p class="text-slate-400 text-sm">總熱量</p>
+                        <div class="flex items-baseline">
+                            <span id="totalCalories" class="text-4xl font-bold text-slate-800">0</span>
+                            <span class="text-teal-500 ml-1 font-medium">kcal</span>
+                        </div>
+                    </div>
+                    <div class="text-right z-10">
+                        <div class="text-xs text-slate-400 mb-1">推薦指數</div>
+                        <div class="text-2xl text-yellow-400" id="starRating">★★★★☆</div>
+                    </div>
+                </div>
+
+                <!-- Macros Grid -->
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <!-- Protein -->
+                    <div class="bg-white/50 p-3 rounded-xl border border-teal-50">
+                        <div class="text-xs text-slate-500 mb-1">蛋白質 (Protein)</div>
+                        <div class="font-bold text-slate-800 text-lg" id="proteinVal">0g</div>
+                        <div class="w-full bg-slate-100 rounded-full h-1.5 mt-2">
+                            <div id="proteinBar" class="bg-purple-400 h-1.5 rounded-full transition-all duration-1000" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Fat -->
+                    <div class="bg-white/50 p-3 rounded-xl border border-teal-50">
+                        <div class="text-xs text-slate-500 mb-1">脂肪 (Fat)</div>
+                        <div class="font-bold text-slate-800 text-lg" id="fatVal">0g</div>
+                        <div class="w-full bg-slate-100 rounded-full h-1.5 mt-2">
+                            <div id="fatBar" class="bg-yellow-400 h-1.5 rounded-full transition-all duration-1000" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Sugar -->
+                    <div class="bg-white/50 p-3 rounded-xl border border-teal-50">
+                        <div class="text-xs text-slate-500 mb-1">糖 (Sugar)</div>
+                        <div class="font-bold text-slate-800 text-lg" id="sugarVal">0g</div>
+                        <div class="w-full bg-slate-100 rounded-full h-1.5 mt-2">
+                            <div id="sugarBar" class="bg-rose-400 h-1.5 rounded-full transition-all duration-1000" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Sodium -->
+                    <div class="bg-white/50 p-3 rounded-xl border border-teal-50">
+                        <div class="text-xs text-slate-500 mb-1">鈉 (Sodium)</div>
+                        <div class="font-bold text-slate-800 text-lg" id="sodiumVal">0mg</div>
+                        <div class="w-full bg-slate-100 rounded-full h-1.5 mt-2">
+                            <div id="sodiumBar" class="bg-blue-400 h-1.5 rounded-full transition-all duration-1000" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Carbs (Full width) -->
+                 <div class="mb-4 px-1">
+                    <div class="flex justify-between text-xs mb-1">
+                        <span class="text-slate-500">總碳水化合物 (Carbs)</span>
+                        <span id="carbsVal" class="font-bold text-slate-800">0g</span>
+                    </div>
+                    <div class="w-full bg-slate-100 rounded-full h-1.5">
+                        <div id="carbsBar" class="bg-green-400 h-1.5 rounded-full transition-all duration-1000" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <!-- Comment -->
+                <div class="mt-6 bg-teal-50 p-4 rounded-xl border border-teal-100">
+                    <p class="text-sm text-teal-800 italic" id="nutritionistComment">
+                        "正在思考該怎麼稱讚你..."
+                    </p>
+                </div>
+
+                <button onclick="window.resetApp()" class="w-full mt-6 py-3 text-slate-400 hover:text-teal-500 text-sm transition-colors">
+                    分析下一道菜 ♥
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script -->
+    <script type="module">
+        let currentBase64Image = null;
+
+        window.handleImageUpload = function(input) {
+            if (input.files && input.files[0]) {
+                const file = input.files[0];
+                const reader = new FileReader();
+
+                reader.onload = function(e) {
+                    resizeImage(e.target.result, 800, (resizedBase64) => {
+                        currentBase64Image = resizedBase64;
+                        
+                        const placeholder = document.getElementById('placeholderPreview');
+                        const img = document.getElementById('imagePreview');
+                        const btn = document.getElementById('analyzeBtn');
+                        
+                        placeholder.classList.add('hidden');
+                        img.src = currentBase64Image;
+                        img.classList.remove('hidden');
+                        
+                        btn.classList.remove('hidden');
+                        btn.disabled = false;
+                    });
+                }
+                reader.readAsDataURL(file);
+            }
+        };
+
+        function resizeImage(base64Str, maxWidth, callback) {
+            const img = new Image();
+            img.src = base64Str;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                if (width > maxWidth) {
+                    height *= maxWidth / width;
+                    width = maxWidth;
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                callback(canvas.toDataURL('image/png')); 
+            };
+        }
+
+        window.prepareAnalysis = function() {
+            // UI Transition
+            document.getElementById('uploadSection').classList.add('hidden');
+            document.getElementById('loadingSection').classList.remove('hidden');
+            
+            // Set scanning image
+            document.getElementById('scanningImage').src = currentBase64Image;
+
+            callGeminiAPI(currentBase64Image);
+        };
+
+        // 具有自動重試機制的 API 呼叫函數
+        async function fetchWithRetry(url, options, maxRetries = 5) {
+            const delays = [1000, 2000, 4000, 8000, 16000]; // 指數退避延遲時間
+            
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    const data = await response.json();
+                    if (data.error) throw new Error(data.error.message);
+                    return data;
+                } catch (error) {
+                    if (i === maxRetries - 1) throw error; // 最後一次依然失敗則拋出錯誤
+                    // 等待一段時間後重試
+                    await new Promise(resolve => setTimeout(resolve, delays[i]));
+                }
+            }
+        }
+
+        async function callGeminiAPI(base64Image) {
+            const imageContent = base64Image.split(',')[1];
+            
+            const promptText = `
+                You are a professional, friendly, and helpful AI nutritionist. 
+                Identify the food in the image.
+                Estimate the nutritional values per 100g.
+                Return ONLY a JSON object with the following keys:
+                - "name": (string) Name of the food in Traditional Chinese (Taiwan usage).
+                - "kCal": (number) Calories per 100g.
+                - "p": (number) Protein in grams per 100g.
+                - "f": (number) Fat in grams per 100g.
+                - "c": (number) Carbs in grams per 100g.
+                - "sugar": (number) Sugar in grams per 100g.
+                - "sodium": (number) Sodium in mg per 100g.
+                - "comment": (string) A short, encouraging, and helpful comment about this food in Traditional Chinese.
+                - "rating": (number) A health rating from 1 to 5.
+            `;
+
+            // 使用環境變數注入 API Key，確保在 AI Studio 中安全且有效
+            const apiKey = process.env.GEMINI_API_KEY; 
+            
+            // 使用正確的模型名稱
+            const modelName = 'gemini-3-flash-preview';
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+
+            const payload = {
+                contents: [{
+                    role: "user",
+                    parts: [
+                        { text: promptText },
+                        { inlineData: { mimeType: "image/png", data: imageContent } }
+                    ]
+                }],
+                generationConfig: {
+                    responseMimeType: "application/json"
+                }
+            };
+
+            try {
+                // 使用重試機制呼叫 API
+                const data = await fetchWithRetry(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const textResult = data.candidates[0].content.parts[0].text;
+                // 因為我們設定了 responseMimeType: "application/json"，回傳會是乾淨的 JSON
+                const parsedData = JSON.parse(textResult);
+                
+                processRealData(parsedData);
+
+            } catch (error) {
+                console.error(error);
+                // 友善的使用者錯誤提示
+                alert("哎呀！分析失敗了。可能是網路連線不穩定，請稍後再試一次。\n\n系統提示：" + error.message);
+                window.resetApp();
+            }
+        }
+
+        function processRealData(baseData) {
+            // Constant: All calculations based on 250g
+            const PORTION_GRAMS = 250;
+            const MULTIPLIER = PORTION_GRAMS / 100;
+
+            const finalData = {
+                name: baseData.name || "未知美食",
+                calories: Math.round((baseData.kCal || 0) * MULTIPLIER),
+                protein: ((baseData.p || 0) * MULTIPLIER).toFixed(1),
+                fat: ((baseData.f || 0) * MULTIPLIER).toFixed(1),
+                carbs: ((baseData.c || 0) * MULTIPLIER).toFixed(1),
+                sugar: ((baseData.sugar || 0) * MULTIPLIER).toFixed(1),
+                sodium: Math.round((baseData.sodium || 0) * MULTIPLIER),
+                comment: baseData.comment || "你看起來比這食物還可口。",
+                rating: baseData.rating || 4
+            };
+
+            renderResult(finalData);
+        }
+
+        function renderResult(data) {
+            document.getElementById('loadingSection').classList.add('hidden');
+            document.getElementById('resultSection').classList.remove('hidden');
+
+            // Fill Text
+            document.getElementById('resultImage').src = currentBase64Image;
+            document.getElementById('foodName').innerText = data.name;
+            document.getElementById('totalCalories').innerText = data.calories;
+            document.getElementById('proteinVal').innerText = data.protein + 'g';
+            document.getElementById('fatVal').innerText = data.fat + 'g';
+            document.getElementById('carbsVal').innerText = data.carbs + 'g';
+            document.getElementById('sugarVal').innerText = data.sugar + 'g';
+            document.getElementById('sodiumVal').innerText = data.sodium + 'mg';
+            document.getElementById('nutritionistComment').innerText = data.comment;
+            
+            const stars = "★".repeat(Math.round(data.rating)) + "☆".repeat(5 - Math.round(data.rating));
+            document.getElementById('starRating').innerText = stars;
+
+            // Animate Bars
+            // Assuming 250g meal maxes for bar visualization
+            setTimeout(() => {
+                document.getElementById('proteinBar').style.width = Math.min((data.protein / 60) * 100, 100) + '%';
+                document.getElementById('fatBar').style.width = Math.min((data.fat / 40) * 100, 100) + '%';
+                document.getElementById('sugarBar').style.width = Math.min((data.sugar / 30) * 100, 100) + '%';
+                // Sodium max assuming 800mg per meal is "a lot"
+                document.getElementById('sodiumBar').style.width = Math.min((data.sodium / 800) * 100, 100) + '%';
+                document.getElementById('carbsBar').style.width = Math.min((data.carbs / 100) * 100, 100) + '%';
+            }, 100);
+        }
+
+        window.resetApp = function() {
+            document.getElementById('resultSection').classList.add('hidden');
+            document.getElementById('uploadSection').classList.remove('hidden');
+            document.getElementById('loadingSection').classList.add('hidden');
+            
+            document.getElementById('imageInput').value = '';
+            document.getElementById('imagePreview').classList.add('hidden');
+            document.getElementById('placeholderPreview').classList.remove('hidden');
+            document.getElementById('analyzeBtn').classList.add('hidden');
+            document.getElementById('resultImage').src = '';
+            
+            currentBase64Image = null;
+            
+            // Reset Bars
+            const bars = ['proteinBar', 'fatBar', 'carbsBar', 'sugarBar', 'sodiumBar'];
+            bars.forEach(id => document.getElementById(id).style.width = '0%');
+        };
+    </script>
+</body>
+</html>
